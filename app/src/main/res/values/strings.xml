@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">resit</string>
+
+    <string name="save_header">Unsaved!</string>
+
+    <string name="confirm_header">Save receipt?</string>
+    <string name="confirm_desc">This will store your receipt locally within your device</string>
+
+    <string name="save_label">Label</string>
+    <string name="note_label">Note (optional)</string>
+
+    <string name="discard_action">Discard</string>
+    <string name="confirm_action">Confirm</string>
+    <string name="cancel_action">Cancel</string>
+    <string name="save_action">Save</string>
+
+    <string name="cant_be_empty">Can\'t be empty</string>
+    <string name="unable_to_read_text">Unable to read text from the image</string>
 </resources>

@@ -1,4 +1,4 @@
-package my.miltsm.resit.screens
+package my.miltsm.resit.home
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -12,33 +12,29 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.res.stringResource
+import my.miltsm.resit.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    modifier: Modifier,
+    onScanActivityClick: () -> Unit
+) {
     Scaffold (
         topBar = {
             TopAppBar(title = {
-                Text(text = "Resit")
+                Text(text = stringResource(id = R.string.app_name))
             })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                //redirects camera
-            }) {
+            FloatingActionButton(onClick = { onScanActivityClick() }) {
                 Icon(Icons.Default.Add, contentDescription = "Add")
             }
         }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            Text(text = "list of receipts here..")
+        Column(modifier = modifier.padding(innerPadding)) {
+
         }
     }
-}
-
-@Preview
-@Composable
-fun PreviewHomeScreen() {
-    HomeScreen()
 }
