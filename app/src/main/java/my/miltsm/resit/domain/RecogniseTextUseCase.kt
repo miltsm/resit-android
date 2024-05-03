@@ -14,7 +14,7 @@ import javax.inject.Inject
 
 class RecogniseTextUseCase @Inject constructor(
     @ApplicationContext
-    val context: Context,
+    private val context: Context,
     private val recogniser : TextRecognizer
 ) {
     suspend fun processTextsFromImage(

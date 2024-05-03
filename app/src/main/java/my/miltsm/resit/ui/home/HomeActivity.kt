@@ -1,4 +1,4 @@
-package my.miltsm.resit.home
+package my.miltsm.resit.ui.home
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -17,8 +17,8 @@ import androidx.navigation.compose.rememberNavController
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import dagger.hilt.android.AndroidEntryPoint
-import my.miltsm.resit.save.SaveScreen
-import my.miltsm.resit.save.SaveViewModel
+import my.miltsm.resit.domain.CacheUseCase
+import my.miltsm.resit.ui.save.SaveScreen
 import my.miltsm.resit.ui.theme.ResitTheme
 import java.io.File
 
@@ -46,7 +46,7 @@ class HomeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val navigateSave = {
-            val cache = File(cacheDir, SaveViewModel.ML_KIT_CACHE_PATH)
+            val cache = File(cacheDir, CacheUseCase.ML_KIT_CACHE_PATH)
             if (cache.list()?.isNotEmpty() == true)
                 navigator.navigate(SAVE_DESTINATION)
             else

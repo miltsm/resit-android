@@ -1,4 +1,4 @@
-package my.miltsm.resit.save
+package my.miltsm.resit.ui.save
 
 import android.content.Context
 import android.graphics.ImageDecoder
@@ -81,6 +81,7 @@ fun SaveScreen(
     val readResit by rememberUpdatedState(newValue = { viewModel.readResit(caches.first()) })
 
     val processState by viewModel.processState.collectAsState()
+    val saveState by viewModel.saveState.collectAsState()
 
     val openConfirmDialog = remember {
         mutableStateOf(false)
@@ -91,10 +92,20 @@ fun SaveScreen(
 //        SnackbarHostState()
 //    }
 
+    if (saveState is State.SuccessState)
+        navController.navigateUp()
+
     SaveContent(
         Modifier, navController, pagerState,
         caches, readResit, openConfirmDialog,
-        processState
+        processState,
+        onConfirm = { title ->
+            openConfirmDialog.value = false
+            viewModel.saveResits(title)
+        },
+        onDiscard = {
+            viewModel.discardResits()
+        }
     )
 }
 
@@ -108,6 +119,8 @@ fun SaveContent(
     readResit: () -> Job,
     confirmDialogState: MutableState<Boolean>,
     processState: State<String>,
+    onConfirm: (String) -> Unit,
+    onDiscard: () -> Unit,
     context: Context = LocalContext.current,
 ) {
     Scaffold(
@@ -115,7 +128,10 @@ fun SaveContent(
             SaveAppBar(navController = navController)
         },
         bottomBar = {
-            BottomActionBar(modifier = modifier) { confirmDialogState.value = true }
+            BottomActionBar(
+                modifier = modifier,
+                discardCache = onDiscard
+            ) { confirmDialogState.value = true }
         }
     ) { innerPadding ->
         Column(
@@ -178,6 +194,7 @@ fun SaveContent(
                     shouldFillLabel = true
                     readResit()
                 },
+                onConfirm = onConfirm,
                 context
             )
     }
@@ -216,26 +233,33 @@ fun SavePager(
     pagerState: PagerState,
     caches: Array<File>
 ) {
-    HorizontalPager(
-        state = pagerState,
-        contentPadding = PaddingValues(horizontal = 32.dp)
-    ) { page ->
-        val bm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-            ImageDecoder.decodeBitmap(
-                ImageDecoder.createSource(caches[page])
-            )
-        else
-            MediaStore.Images.Media.getBitmap(
-                context.contentResolver, caches[page].path.toUri()
-            )
+    if (caches.isNotEmpty())
+        HorizontalPager(
+            state = pagerState,
+            contentPadding = PaddingValues(horizontal = 32.dp)
+        ) { page ->
+            val bm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                ImageDecoder.decodeBitmap(
+                    ImageDecoder.createSource(caches[page])
+                )
+            else
+                MediaStore.Images.Media.getBitmap(
+                    context.contentResolver, caches[page].path.toUri()
+                )
 
-        Image(bitmap = bm.asImageBitmap(), contentDescription = "")
-    }
+            Image(bitmap = bm.asImageBitmap(), contentDescription = "")
+        }
+    else
+        Column {
+            //placeholder screen
+            Text(text = "Not found")
+        }
 }
 
 @Composable
 fun BottomActionBar(
     modifier: Modifier,
+    discardCache: () -> Unit,
     promptConfirmDialog: () -> Unit
 ) {
     Surface(
@@ -247,7 +271,7 @@ fun BottomActionBar(
                 .padding(vertical = 12.dp, horizontal = 16.dp),
             horizontalArrangement = Arrangement.End
         ) {
-            TextButton(onClick = {}) {
+            TextButton(onClick = discardCache) {
                 Text(text = stringResource(id = R.string.discard_action))
             }
             Spacer(modifier = modifier.size(16.dp))
@@ -273,7 +297,8 @@ fun BottomActionBar(
 fun PreviewBottomActionBar() {
     ResitTheme {
         BottomActionBar(
-            modifier = Modifier
+            modifier = Modifier,
+            discardCache = {}
         ) {}
     }
 }
@@ -290,6 +315,7 @@ fun ConfirmDialog(
     onErrorLabelChanged: (String) -> Unit,
     onDismiss: () -> Unit,
     readResit: () -> Unit,
+    onConfirm: (String) -> Unit,
     context: Context
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -391,9 +417,7 @@ fun ConfirmDialog(
                                 onErrorLabelChanged(
                                     context.getString(R.string.cant_be_empty)
                                 )
-                            else -> {
-                                //TODO: save work manager
-                            }
+                            else -> onConfirm(label)
                         }
                     }) {
                         Text(text = stringResource(id = R.string.confirm_action))
@@ -420,6 +444,7 @@ fun PreviewConfirmDialog() {
             onErrorLabelChanged = {},
             onDismiss = {},
             readResit = {},
+            onConfirm = {},
             context = LocalContext.current
         )
     }
