@@ -12,5 +12,6 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 class RecogniserModule {
     @Provides
-    fun provideDefaultRecogniser(): TextRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    fun provideDefaultRecogniser(): TextRecognizer =
+        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 }

@@ -1,18 +1,23 @@
 package my.miltsm.resit.domain
 
-import android.content.Context
-import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
+import my.miltsm.resit.data.model.ImagePath
+import my.miltsm.resit.data.model.Receipt
+import my.miltsm.resit.data.repository.SaveRepository
 import java.io.File
 import javax.inject.Inject
 
 class CacheUseCase @Inject constructor(
-    @ApplicationContext
-    private val context: Context
+    private val saveRepository: SaveRepository,
+    private val ioDispatcher: CoroutineDispatcher
 ) {
     companion object {
         const val ML_KIT_CACHE_PATH = "/mlkit_docscan_ui_client"
         const val RECEIPT_PATH = "/receipts/"
     }
+
+    private val context = saveRepository.context
 
     fun getCache() : Array<File> = try {
         File(context.cacheDir, ML_KIT_CACHE_PATH).listFiles() ?: throw Exception()
@@ -20,23 +25,39 @@ class CacheUseCase @Inject constructor(
         emptyArray()
     }
 
-    fun saveCache(fileParentName: String) {
-        getCache().forEach { cache ->
-            cache.copyTo(
-                File(
-                    context.filesDir,
-                    "${RECEIPT_PATH}${fileParentName.replace(" ", "-").lowercase()}/${cache.name}"
+    suspend fun saveCache(fileParentName: String, description: String? = "") = withContext(ioDispatcher) {
+        getCache().let { caches ->
+            val receipt = saveRepository.saveReceipt(
+                Receipt(
+                    title = fileParentName,
+                    description = description
                 )
             )
+
+            val newPaths = mutableListOf<ImagePath>()
+
+            caches.forEach { cache ->
+                val newPath = "${RECEIPT_PATH}${fileParentName.replace(" ", "-").lowercase()}/${cache.name}"
+                cache.copyTo(
+                    File(
+                        context.filesDir,
+                        newPath
+                    )
+                )
+                newPaths.add(ImagePath(receiptId = receipt.id, path= newPath))
+            }
+
+            saveRepository.saveImagePaths(newPaths)
         }
+
         clearCache()
     }
 
-    fun clearCache() {
-        val caches = File(context.cacheDir, ML_KIT_CACHE_PATH).listFiles() ?: return
+    suspend fun clearCache() = withContext(ioDispatcher) {
+        val caches = File(context.cacheDir, ML_KIT_CACHE_PATH).listFiles()
 
         try {
-            caches.forEach { cache -> cache.delete() }
-        } catch (e: Exception) {}
+            caches?.forEach { cache -> cache.delete() }
+        } catch (_: Exception) {}
     }
 }
