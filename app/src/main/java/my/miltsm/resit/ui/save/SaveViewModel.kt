@@ -60,12 +60,12 @@ class SaveViewModel @Inject constructor(
             }
     }
 
-    fun saveResits(title: String) = viewModelScope.launch {
+    fun saveResits(label: String, note: String?) = viewModelScope.launch {
         _saveState.apply {
             value = State.LoadingState()
             value = try {
                 _caches.value = emptyArray()
-                cacheUseCase.saveCache(title)
+                cacheUseCase.saveCache(label, note)
                 State.SuccessState()
             } catch (e: Exception) {
                 State.FailedState()

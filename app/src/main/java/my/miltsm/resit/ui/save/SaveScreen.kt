@@ -99,9 +99,9 @@ fun SaveScreen(
         Modifier, navController, pagerState,
         caches, readResit, openConfirmDialog,
         processState,
-        onConfirm = { title ->
+        onConfirm = { label, note ->
             openConfirmDialog.value = false
-            viewModel.saveResits(title)
+            viewModel.saveResits(label, note)
         },
         onDiscard = {
             viewModel.discardResits()
@@ -119,7 +119,7 @@ fun SaveContent(
     readResit: () -> Job,
     confirmDialogState: MutableState<Boolean>,
     processState: State<String>,
-    onConfirm: (String) -> Unit,
+    onConfirm: (String, String?) -> Unit,
     onDiscard: () -> Unit,
     context: Context = LocalContext.current,
 ) {
@@ -148,8 +148,8 @@ fun SaveContent(
             mutableStateOf("")
         }
 
-        var note by remember {
-            mutableStateOf("")
+        var note : String? by remember {
+            mutableStateOf(null)
         }
 
         //auto-fill label feature
@@ -309,13 +309,13 @@ fun ConfirmDialog(
     processState: State<String>,
     label: String,
     onLabelChanged: (String) -> Unit,
-    note: String,
+    note: String?,
     onNoteChanged: (String) -> Unit,
     errorLabel: String,
     onErrorLabelChanged: (String) -> Unit,
     onDismiss: () -> Unit,
     readResit: () -> Unit,
-    onConfirm: (String) -> Unit,
+    onConfirm: (String, String?) -> Unit,
     context: Context
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -393,7 +393,7 @@ fun ConfirmDialog(
                     }
                 )
                 OutlinedTextField(
-                    value = note,
+                    value = note ?: "",
                     onValueChange = onNoteChanged,
                     label = {
                         Text(text = "Note (optional)")
@@ -417,7 +417,7 @@ fun ConfirmDialog(
                                 onErrorLabelChanged(
                                     context.getString(R.string.cant_be_empty)
                                 )
-                            else -> onConfirm(label)
+                            else -> onConfirm(label, note)
                         }
                     }) {
                         Text(text = stringResource(id = R.string.confirm_action))
@@ -444,7 +444,7 @@ fun PreviewConfirmDialog() {
             onErrorLabelChanged = {},
             onDismiss = {},
             readResit = {},
-            onConfirm = {},
+            onConfirm = { label, note -> },
             context = LocalContext.current
         )
     }

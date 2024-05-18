@@ -10,11 +10,13 @@ import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Relation
+import androidx.room.Transaction
 
 @Entity
 data class Receipt(
     val title: String,
     val description: String?,
+    val createdAt: Long,
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "receiptId")
     val id: Long = 0
@@ -34,8 +36,9 @@ interface ReceiptDao {
     @Query("SELECT * FROM Receipt")
     fun receipt() : Receipt
 
-    @Query("SELECT * FROM Receipt")
-    fun receipts() : List<Receipt>
+    @Transaction
+    @Query("SELECT * FROM Receipt LIMIT 15 OFFSET :pageOffset")
+    fun receipts(pageOffset: Int) : List<ReceiptWithImagePaths>
 }
 
 @Entity

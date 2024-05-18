@@ -1,5 +1,6 @@
 package my.miltsm.resit.domain
 
+import android.text.format.DateFormat
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import my.miltsm.resit.data.model.ImagePath
@@ -25,12 +26,16 @@ class CacheUseCase @Inject constructor(
         emptyArray()
     }
 
-    suspend fun saveCache(fileParentName: String, description: String? = "") = withContext(ioDispatcher) {
+    suspend fun saveCache(fileParentName: String, description: String?) = withContext(ioDispatcher) {
         getCache().let { caches ->
+
+            val timestamp = System.currentTimeMillis()
+
             val receipt = saveRepository.saveReceipt(
                 Receipt(
                     title = fileParentName,
-                    description = description
+                    description = description ?: "Saved at ${DateFormat.format("HH:mm", timestamp)}",
+                    createdAt = timestamp
                 )
             )
 

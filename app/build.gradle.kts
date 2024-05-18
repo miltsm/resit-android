@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.lifecycle.viewmodel)
     implementation(libs.hilt.navigation)
     implementation(libs.mlkit.doc.scanner)
+    implementation(libs.paging.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
