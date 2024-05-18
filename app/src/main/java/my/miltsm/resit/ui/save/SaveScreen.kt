@@ -61,7 +61,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.Job
 import my.miltsm.resit.R
-import my.miltsm.resit.data.model.State
+import my.miltsm.resit.data.model.Response
 import my.miltsm.resit.ui.theme.ResitTheme
 import java.io.File
 
@@ -92,7 +92,7 @@ fun SaveScreen(
 //        SnackbarHostState()
 //    }
 
-    if (saveState is State.SuccessState)
+    if (saveState is Response.Success)
         navController.navigateUp()
 
     SaveContent(
@@ -118,7 +118,7 @@ fun SaveContent(
     caches: Array<File>,
     readResit: () -> Job,
     confirmDialogState: MutableState<Boolean>,
-    processState: State<String>,
+    processState: Response<String>,
     onConfirm: (String, String?) -> Unit,
     onDiscard: () -> Unit,
     context: Context = LocalContext.current,
@@ -157,7 +157,7 @@ fun SaveContent(
             mutableStateOf(false)
         }
 
-        if (shouldFillLabel && processState is State.SuccessState) {
+        if (shouldFillLabel && processState is Response.Success) {
             label = processState.data ?: ""
             shouldFillLabel = false
         }
@@ -166,7 +166,7 @@ fun SaveContent(
             mutableStateOf("")
         }
 
-        if (processState is State.FailedState)
+        if (processState is Response.Fail)
             LaunchedEffect(key1 = processState) {
                 errorLabel = context.getString(R.string.unable_to_read_text)
             }
@@ -306,7 +306,7 @@ fun PreviewBottomActionBar() {
 @Composable
 fun ConfirmDialog(
     modifier: Modifier,
-    processState: State<String>,
+    processState: Response<String>,
     label: String,
     onLabelChanged: (String) -> Unit,
     note: String?,
@@ -350,7 +350,7 @@ fun ConfirmDialog(
                     label = {
                         Text(text = stringResource(id = R.string.save_label))
                     },
-                    enabled = processState !is State.LoadingState,
+                    enabled = processState !is Response.Loading,
                     supportingText = {
                         if (errorLabel.isNotEmpty())
                             Text(text = errorLabel)
@@ -368,19 +368,19 @@ fun ConfirmDialog(
                                     )
                                 }
                             }
-                            processState is State.LoadingState -> {
+                            processState is Response.Loading -> {
                                 CircularProgressIndicator(modifier = modifier.size(24.dp))
                             }
                             else -> {
                                 IconButton(
                                     onClick = {
                                         when(processState) {
-                                            is State.SuccessState ->
+                                            is Response.Success ->
                                                 onLabelChanged(processState.data ?: "")
                                             else -> readResit()
                                         }
                                     },
-                                    enabled = processState !is State.LoadingState
+                                    enabled = processState !is Response.Loading
                                 ) {
                                     Icon(
                                         painter = painterResource(id = R.drawable.baseline_document_scanner_24),
@@ -435,7 +435,7 @@ fun PreviewConfirmDialog() {
         ConfirmDialog(
             modifier = Modifier,
             processState = //State.LoadingState()
-            State.SuccessState("Test")
+            Response.Success("Test")
             ,label = "",
             onLabelChanged = {},
             note = "",

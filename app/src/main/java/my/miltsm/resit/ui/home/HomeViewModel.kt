@@ -1,8 +1,16 @@
 package my.miltsm.resit.ui.home
 
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.os.Build
+import android.provider.MediaStore
 import android.text.format.DateFormat
 import android.text.format.DateUtils
 import android.util.Log
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.produceState
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -12,8 +20,10 @@ import androidx.paging.insertSeparators
 import androidx.paging.map
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.map
+import my.miltsm.resit.data.model.Response
 import my.miltsm.resit.data.repository.HomeRepository
 import my.miltsm.resit.data.repository.paging_source.ReceiptPagingSource
+import java.io.File
 import java.util.Date
 import javax.inject.Inject
 
@@ -61,6 +71,26 @@ class HomeViewModel @Inject constructor(
                 //page footer
         }
         .cachedIn(viewModelScope)
+
+    @Composable
+    fun getImageFile(path: String) : State<Response<Bitmap>> {
+        return produceState<Response<Bitmap>>(initialValue = Response.Idle()) {
+            value = try {
+                val imageFile = File(homeRepository.context.filesDir, path)
+                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                    ImageDecoder.decodeBitmap(
+                        ImageDecoder.createSource(imageFile)
+                    )
+                else
+                    MediaStore.Images.Media.getBitmap(
+                        homeRepository.context.contentResolver, imageFile.toUri()
+                    )
+                Response.Success(bitmap)
+            } catch (e: Exception) {
+                Response.Fail()
+            }
+        }
+    }
 
     private fun isSameDate(beforeTimestamp: Long, afterTimestamp: Long) : Boolean {
         val beforeDate = Date(beforeTimestamp)

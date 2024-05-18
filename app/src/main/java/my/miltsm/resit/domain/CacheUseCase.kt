@@ -2,6 +2,8 @@ package my.miltsm.resit.domain
 
 import android.text.format.DateFormat
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import my.miltsm.resit.data.model.ImagePath
 import my.miltsm.resit.data.model.Receipt
@@ -31,17 +33,17 @@ class CacheUseCase @Inject constructor(
 
             val timestamp = System.currentTimeMillis()
 
-            val receipt = saveRepository.saveReceipt(
-                Receipt(
-                    title = fileParentName,
-                    description = description ?: "Saved at ${DateFormat.format("HH:mm", timestamp)}",
-                    createdAt = timestamp
+            val receipt = async {
+                saveRepository.saveReceipt(
+                    Receipt(
+                        title = fileParentName,
+                        description = description ?: "Saved at ${DateFormat.format("HH:mm", timestamp)}",
+                        createdAt = timestamp
+                    )
                 )
-            )
+            }.await()
 
-            val newPaths = mutableListOf<ImagePath>()
-
-            caches.forEach { cache ->
+            caches.map { cache ->
                 val newPath = "${RECEIPT_PATH}${fileParentName.replace(" ", "-").lowercase()}/${cache.name}"
                 cache.copyTo(
                     File(
@@ -49,13 +51,16 @@ class CacheUseCase @Inject constructor(
                         newPath
                     )
                 )
-                newPaths.add(ImagePath(receiptId = receipt.id, path= newPath))
+                ImagePath(receiptId = receipt.id, path= newPath)
+            }.let { paths ->
+                launch {
+                    saveRepository.saveImagePaths(paths)
+                }
+                launch {
+                    clearCache()
+                }
             }
-
-            saveRepository.saveImagePaths(newPaths)
         }
-
-        clearCache()
     }
 
     suspend fun clearCache() = withContext(ioDispatcher) {

@@ -33,7 +33,7 @@ interface ReceiptDao {
     @Query("delete from receipt")
     fun deleteAll()
 
-    @Query("SELECT * FROM Receipt")
+    @Query("SELECT * FROM Receipt order by receiptId desc")
     fun receipt() : Receipt
 
     @Transaction

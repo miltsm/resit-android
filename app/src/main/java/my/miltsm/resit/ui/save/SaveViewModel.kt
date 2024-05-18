@@ -11,7 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import my.miltsm.resit.data.model.State
+import my.miltsm.resit.data.model.Response
 import my.miltsm.resit.domain.CacheUseCase
 import my.miltsm.resit.domain.RecogniseTextUseCase
 import java.io.File
@@ -27,11 +27,11 @@ class SaveViewModel @Inject constructor(
         const val TAG = "SAVE_VM"
     }
 
-    private val _processState = MutableStateFlow<State<String>>(State.IdleState())
-    val processState : StateFlow<State<String>> get() = _processState
+    private val _processState = MutableStateFlow<Response<String>>(Response.Idle())
+    val processState : StateFlow<Response<String>> get() = _processState
 
-    private val _saveState = MutableStateFlow<State<Unit>>(State.IdleState())
-    val saveState : StateFlow<State<Unit>> get() = _saveState
+    private val _saveState = MutableStateFlow<Response<Unit>>(Response.Idle())
+    val saveState : StateFlow<Response<Unit>> get() = _saveState
 
     private val _caches = MutableStateFlow<Array<File>>(emptyArray())
     val caches : StateFlow<Array<File>> get() = _caches
@@ -44,9 +44,9 @@ class SaveViewModel @Inject constructor(
         firstPage: File
     ) = viewModelScope.launch {
         _processState
-            .takeIf { it.value !is State.LoadingState }
+            .takeIf { it.value !is Response.Loading }
             ?.apply {
-                value = State.LoadingState()
+                value = Response.Loading()
                 try {
                     recogniseTxtUC.processTextsFromImage(
                         firstPage.toUri(),
@@ -55,47 +55,47 @@ class SaveViewModel @Inject constructor(
                     )
                 } catch (e: Exception) {
                     Log.e(TAG, e.toString())
-                    value = State.FailedState()
+                    value = Response.Fail()
                 }
             }
     }
 
     fun saveResits(label: String, note: String?) = viewModelScope.launch {
         _saveState.apply {
-            value = State.LoadingState()
+            value = Response.Loading()
             value = try {
                 _caches.value = emptyArray()
                 cacheUseCase.saveCache(label, note)
-                State.SuccessState()
+                Response.Success()
             } catch (e: Exception) {
-                State.FailedState()
+                Response.Fail()
             }
         }
     }
 
     fun discardResits() = viewModelScope.launch {
         _saveState.apply {
-            value = State.LoadingState()
+            value = Response.Loading()
             value = try {
                 _caches.value = emptyArray()
                 cacheUseCase.clearCache()
-                State.SuccessState()
+                Response.Success()
             } catch (e: Exception) {
-                State.FailedState()
+                Response.Fail()
             }
         }
     }
 
     override fun onSuccess(p0: Text?) {
         p0?.textBlocks?.firstOrNull()?.also {
-            _processState.value = State.SuccessState(data = it.lines.firstOrNull()?.text ?: "")
+            _processState.value = Response.Success(data = it.lines.firstOrNull()?.text ?: "")
         } ?: {
-            _processState.value = State.FailedState()
+            _processState.value = Response.Fail()
         }
     }
 
     override fun onFailure(p0: java.lang.Exception) {
         Log.e(TAG, p0.toString())
-        _processState.value = State.FailedState()
+        _processState.value = Response.Fail()
     }
 }

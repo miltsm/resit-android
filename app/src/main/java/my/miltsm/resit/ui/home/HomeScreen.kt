@@ -1,5 +1,7 @@
 package my.miltsm.resit.ui.home
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,9 +30,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,8 +46,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import my.miltsm.resit.R
+import my.miltsm.resit.data.model.ImagePath
 import my.miltsm.resit.data.model.Receipt
 import my.miltsm.resit.data.model.ReceiptWithImagePaths
+import my.miltsm.resit.data.model.Response
 import my.miltsm.resit.ui.common.shimmerBrush
 import my.miltsm.resit.ui.theme.ResitTheme
 
@@ -72,7 +80,10 @@ fun HomeScreen(
         }
     ) { innerPadding ->
         Column(modifier = modifier.padding(innerPadding)) {
-            LazyColumn(modifier = modifier.padding(horizontal = 8.dp).fillMaxSize()) {
+            LazyColumn(modifier = modifier
+                .padding(horizontal = 8.dp)
+                .fillMaxSize()
+            ) {
                 items(
                     lazyPagingReceipts.itemCount,
                     key = lazyPagingReceipts.itemKey {
@@ -89,7 +100,12 @@ fun HomeScreen(
                             null ->
                                 ReceiptRowPlaceholder(modifier = modifier)
                             is ReceiptUIModel.ReceiptModel ->
-                                ReceiptRow(item = item.data, modifier = modifier)
+                                ReceiptRow(item = item.data,
+                                getImageBitmap = { path: String ->
+                                    viewModel.getImageFile(
+                                        path = path
+                                    )
+                                }, modifier = modifier)
                             is ReceiptUIModel.SeparatorModel ->
                                 DateSeparator(date = item.date, modifier)
                         }
@@ -103,8 +119,11 @@ fun HomeScreen(
 @Composable
 fun ReceiptRow(
     item: ReceiptWithImagePaths,
+    getImageBitmap: @Composable (String) -> State<Response<Bitmap>>,
     modifier: Modifier
 ) {
+    val imageState = getImageBitmap(item.paths.first().path)
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -128,38 +147,36 @@ fun ReceiptRow(
                         overflow = TextOverflow.Ellipsis,
                         color = Color.Gray)
                 }
-                Column(
+                Box(
                     modifier = modifier
                         .requiredSize(45.dp)
                         .fillMaxHeight()
-                        .background(
-                            MaterialTheme.colorScheme.tertiary,
-                            shape = RoundedCornerShape(8.dp)
-                        ),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .clip(RoundedCornerShape(8.dp))
                 ) {
-                    Icon(
-                        tint = Color.White,
-                        painter = painterResource(id = R.drawable.baseline_receipt_long_24),
-                        contentDescription = "logo")
+                    imageState.value.let { response ->
+                        when(response) {
+                            is Response.Loading, is Response.Idle ->
+                                ThumbnailPlaceholder(modifier = modifier)
+                            is Response.Success ->
+                                Image(bitmap = response.data?.asImageBitmap()!!, contentDescription = "")
+                            else ->
+                                Column(
+                                    modifier = modifier
+                                        .background(
+                                            MaterialTheme.colorScheme.tertiary
+                                        )
+                                        .fillMaxSize(),
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        tint = Color.White,
+                                        painter = painterResource(id = R.drawable.baseline_receipt_long_24),
+                                        contentDescription = "logo")
+                                }
+                        }
+                    }
                 }
-//                    try {
-//                        val imageFile = File(firstImage.path)
-//
-//                        val bm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-//                            ImageDecoder.decodeBitmap(
-//                                ImageDecoder.createSource(imageFile)
-//                            )
-//                        else
-//                            MediaStore.Images.Media.getBitmap(
-//                                context.contentResolver, imageFile.toUri()
-//                            )
-//
-//                        Image(bitmap = bm.asImageBitmap(), contentDescription = "")
-//                    } catch (e: Exception) {
-//
-//                    }
             }
             HorizontalDivider(
                 modifier = modifier.padding(top = 8.dp)
@@ -180,8 +197,9 @@ fun PreviewReceiptCard() {
                     "- Mister cdchbdfjbvjdhcdshbcjs chbdsjcbdj\n".repeat(5),
                     createdAt = 112334
                 ),
-                paths = emptyList()
+                paths = listOf(ImagePath(1, ""))
             ),
+            getImageBitmap =  { string -> produceState(initialValue = Response.Fail()) { value = Response.Fail() } },
             modifier = Modifier
         )
     }
@@ -215,10 +233,7 @@ fun ReceiptRowPlaceholder(
                         .background(shimmerBrush(), shape = RoundedCornerShape(8.dp)))
                 }
                 Spacer(modifier = modifier.weight(1f))
-                Box(modifier = modifier
-                    .size(45.dp)
-                    .background(shimmerBrush(), shape = RoundedCornerShape(8.dp))
-                )
+                ThumbnailPlaceholder(modifier = modifier)
             }
             HorizontalDivider(
                 modifier = modifier.padding(top = 8.dp)
@@ -246,6 +261,7 @@ fun DateSeparator(
         //horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AssistChip(onClick = {},
+            enabled = false,
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.event_upcoming_24dp),
@@ -263,5 +279,21 @@ fun DateSeparator(
 fun PreviewDateSeparator() {
     ResitTheme {
         DateSeparator(date = "Today", Modifier)
+    }
+}
+
+@Composable
+fun ThumbnailPlaceholder(modifier: Modifier) {
+    Box(modifier = modifier
+        .size(45.dp)
+        .background(shimmerBrush(), shape = RoundedCornerShape(8.dp))
+    )
+}
+
+@Preview
+@Composable
+fun PreviewThumbnailPlaceholder() {
+    ResitTheme {
+        ThumbnailPlaceholder(modifier = Modifier)
     }
 }
