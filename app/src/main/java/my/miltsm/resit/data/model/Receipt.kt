@@ -1,5 +1,6 @@
 package my.miltsm.resit.data.model
 
+import androidx.paging.PagingSource
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Delete
@@ -11,6 +12,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
+import kotlinx.coroutines.flow.Flow
 
 @Entity
 data class Receipt(
@@ -36,9 +38,16 @@ interface ReceiptDao {
     @Query("SELECT * FROM Receipt order by receiptId desc")
     fun receipt() : Receipt
 
+    @Query("SELECT * FROM Receipt")
+    fun flow() : Flow<List<Receipt>>
+
     @Transaction
-    @Query("SELECT * FROM Receipt LIMIT 15 OFFSET :pageOffset")
-    fun receipts(pageOffset: Int) : List<ReceiptWithImagePaths>
+    @Query("SELECT * FROM Receipt order by createdAt desc")
+    fun pagingSource() : PagingSource<Int, ReceiptWithImagePaths>
+
+    @Transaction
+    @Query("SELECT * FROM Receipt order by createdAt desc LIMIT :pageSize OFFSET :pageOffset")
+    fun receipts(pageSize: Int, pageOffset: Int) : List<ReceiptWithImagePaths>
 }
 
 @Entity

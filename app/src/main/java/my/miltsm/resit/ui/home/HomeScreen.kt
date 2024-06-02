@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -16,35 +17,40 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import my.miltsm.resit.R
 import my.miltsm.resit.data.model.ImagePath
 import my.miltsm.resit.data.model.Receipt
@@ -53,7 +59,6 @@ import my.miltsm.resit.data.model.Response
 import my.miltsm.resit.ui.common.shimmerBrush
 import my.miltsm.resit.ui.theme.ResitTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     modifier: Modifier,
@@ -61,28 +66,31 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
 
-    val lazyPagingReceipts = viewModel.receipts.collectAsLazyPagingItems()
+    val scope = rememberCoroutineScope()
+    val lazyPagingReceipts = viewModel.receipts.collectAsLazyPagingItems(scope.coroutineContext)
+
+    LaunchedEffect(viewModel.receiptFlow) {
+        viewModel.receiptFlow.distinctUntilChanged().collectLatest {
+            if (lazyPagingReceipts.loadState.refresh !is LoadState.Loading)
+                lazyPagingReceipts.refresh()
+        }
+    }
 
     Scaffold (
-        topBar = {
-            TopAppBar(title = {
-                Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    Text(
-                        text = stringResource(id = R.string.app_name),
-                        style = MaterialTheme.typography.headlineLarge)
-                }
-            })
-        },
         floatingActionButton = {
             FloatingActionButton(onClick = { onScanActivityClick() }) {
                 Icon(Icons.Default.Add, contentDescription = "Add")
             }
         }
     ) { innerPadding ->
-        Column(modifier = modifier.padding(innerPadding)) {
-            LazyColumn(modifier = modifier
-                .padding(horizontal = 8.dp)
-                .fillMaxSize()
+        Box(
+            modifier = modifier
+            .padding(innerPadding)
+        ) {
+            LazyColumn(
+                modifier = modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(
                     lazyPagingReceipts.itemCount,
@@ -90,8 +98,10 @@ fun HomeScreen(
                         when(it) {
                             is ReceiptUIModel.ReceiptModel ->
                                 it.data.receipt.id
-                            is ReceiptUIModel.SeparatorModel ->
-                                it.date
+                            is ReceiptUIModel.DateSeparatorModel ->
+                                it.id
+                            is ReceiptUIModel.ReceiptSeparatorModel ->
+                                it.id
                         }
                     }
                 ) {index ->
@@ -99,18 +109,33 @@ fun HomeScreen(
                         when (item) {
                             null ->
                                 ReceiptRowPlaceholder(modifier = modifier)
+
                             is ReceiptUIModel.ReceiptModel ->
                                 ReceiptRow(item = item.data,
-                                getImageBitmap = { path: String ->
-                                    viewModel.getImageFile(
-                                        path = path
-                                    )
-                                }, modifier = modifier)
-                            is ReceiptUIModel.SeparatorModel ->
+                                    getImageBitmap = { path: String ->
+                                        viewModel.getThumbnail(
+                                            path = path
+                                        )
+                                    }, modifier = modifier
+                                )
+
+                            is ReceiptUIModel.DateSeparatorModel ->
                                 DateSeparator(date = item.date, modifier)
+
+                            is ReceiptUIModel.ReceiptSeparatorModel ->
+                                HorizontalDivider(modifier = modifier.padding(start = 16.dp))
                         }
                     }
                 }
+
+                if (lazyPagingReceipts.loadState.append == LoadState.Loading)
+                    item {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                        )
+                    }
             }
         }
     }
@@ -123,19 +148,16 @@ fun ReceiptRow(
     modifier: Modifier
 ) {
     val imageState = getImageBitmap(item.paths.first().path)
-
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 80.dp)
-            .padding(vertical = 4.dp)
+            .padding(start = 16.dp)
+            .defaultMinSize(minHeight = 70.dp)
     ) {
-        Column(
-            modifier = modifier.padding(8.dp)
-        ) {
+        Column {
             Row {
                 Column(
-                    modifier = modifier.weight(1f)
+                    modifier = Modifier.weight(1f)
                 ) {
                     Text(
                         text = item.receipt.title,
@@ -158,7 +180,11 @@ fun ReceiptRow(
                             is Response.Loading, is Response.Idle ->
                                 ThumbnailPlaceholder(modifier = modifier)
                             is Response.Success ->
-                                Image(bitmap = response.data?.asImageBitmap()!!, contentDescription = "")
+                                Image(
+                                    bitmap = response.data?.asImageBitmap()!!,
+                                    contentDescription = "",
+                                    contentScale = ContentScale.Crop
+                                )
                             else ->
                                 Column(
                                     modifier = modifier
@@ -178,23 +204,20 @@ fun ReceiptRow(
                     }
                 }
             }
-            HorizontalDivider(
-                modifier = modifier.padding(top = 8.dp)
-            )
         }
     }
 }
 
 @Preview
 @Composable
-fun PreviewReceiptCard() {
+fun PreviewReceiptRow() {
     ResitTheme {
         ReceiptRow(
             item =
             ReceiptWithImagePaths(
                 receipt = Receipt(
                     "Sushi",
-                    "- Mister cdchbdfjbvjdhcdshbcjs chbdsjcbdj\n".repeat(5),
+                    "- Mister cdchbdfjbvjdhcdshbcjs chbdsjcbdj\n".repeat(1),
                     createdAt = 112334
                 ),
                 paths = listOf(ImagePath(1, ""))
@@ -206,38 +229,31 @@ fun PreviewReceiptCard() {
 }
 
 @Composable
-fun ReceiptRowPlaceholder(
-    modifier: Modifier
-) {
+fun ReceiptRowPlaceholder(modifier: Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 80.dp)
-            .padding(vertical = 4.dp)
+            .padding(start = 16.dp)
+            .defaultMinSize(minHeight = 70.dp)
     ) {
-        Column(
-            modifier = modifier.padding(8.dp)
-        ) {
-            Row {
-                Column {
-                    Box(modifier = modifier
-                        .size(width = 120.dp, height = 20.dp)
-                        .background(shimmerBrush(), shape = RoundedCornerShape(12.dp)))
-                    Spacer(modifier = modifier.height(6.dp))
-                    Box(modifier = modifier
-                        .size(width = 300.dp, height = 14.dp)
-                        .background(shimmerBrush(), shape = RoundedCornerShape(8.dp)))
-                    Spacer(modifier = modifier.height(5.dp))
-                    Box(modifier = modifier
-                        .size(width = 180.dp, height = 14.dp)
-                        .background(shimmerBrush(), shape = RoundedCornerShape(8.dp)))
-                }
-                Spacer(modifier = modifier.weight(1f))
-                ThumbnailPlaceholder(modifier = modifier)
+        Row {
+            Column(
+                modifier = modifier.align(Alignment.CenterVertically)
+            ) {
+                Box(modifier = modifier
+                    .size(width = 120.dp, height = 20.dp)
+                    .background(shimmerBrush(), shape = RoundedCornerShape(12.dp)))
+                Spacer(modifier = modifier.height(6.dp))
+                Box(modifier = modifier
+                    .size(width = 300.dp, height = 14.dp)
+                    .background(shimmerBrush(), shape = RoundedCornerShape(8.dp)))
+                Spacer(modifier = modifier.height(5.dp))
+                Box(modifier = modifier
+                    .size(width = 180.dp, height = 14.dp)
+                    .background(shimmerBrush(), shape = RoundedCornerShape(8.dp)))
             }
-            HorizontalDivider(
-                modifier = modifier.padding(top = 8.dp)
-            )
+            Spacer(modifier = modifier.weight(1f))
+            ThumbnailPlaceholder(modifier = modifier)
         }
     }
 }
@@ -257,8 +273,7 @@ fun DateSeparator(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 16.dp),
-        //horizontalAlignment = Alignment.CenterHorizontally
+            .padding(top = 16.dp, bottom = 8.dp),
     ) {
         AssistChip(onClick = {},
             enabled = false,

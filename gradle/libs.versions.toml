@@ -38,6 +38,8 @@ dagger-hilt = { group = "com.google.dagger", name = "hilt-android", version.ref 
 dagger-hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 androidx-room = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-compiler =  { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-room-coroutine = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-paging = { group = "androidx.room", name = "room-paging", version.ref = "room" }
 google-mlkit = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkit" }
 camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
 camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }

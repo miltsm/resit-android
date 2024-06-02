@@ -65,6 +65,8 @@ dependencies {
     implementation(libs.dagger.hilt)
     ksp(libs.dagger.hilt.compiler)
     implementation(libs.androidx.room)
+    implementation(libs.androidx.room.coroutine)
+    implementation(libs.androidx.room.paging)
     ksp(libs.androidx.room.compiler)
     implementation(libs.google.mlkit)
     implementation(libs.camera.core)

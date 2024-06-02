@@ -3,10 +3,10 @@ package my.miltsm.resit.data.repository.paging_source
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import my.miltsm.resit.data.model.ReceiptWithImagePaths
-import my.miltsm.resit.data.repository.HomeRepository
+import my.miltsm.resit.data.repository.ReceiptRepository
 
 class ReceiptPagingSource(
-    private val repository: HomeRepository
+    private val repository: ReceiptRepository
 ) : PagingSource<Int, ReceiptWithImagePaths>() {
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ReceiptWithImagePaths> =
         try {
@@ -14,7 +14,7 @@ class ReceiptPagingSource(
             val receipts = repository.receipts(nextPageNumber)
             LoadResult.Page(
                 data = receipts,
-                nextKey = nextPageNumber.plus(1),
+                nextKey = if (receipts.isEmpty()) null else nextPageNumber.plus(1),
                 prevKey = null
             )
         } catch (e: Exception) {
